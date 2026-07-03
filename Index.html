@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ushot • Lacrosse Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --accent: #60a5fa;
+            --bg: #f8fafc;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            color: #1e2937;
+        }
+        header {
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.2rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 2.2rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 78px;
+            bottom: 0;
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem 1rem;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+            max-width: 1200px;
+        }
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: #eff6ff;
+            color: var(--primary);
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 9999px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-3px); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+        .shot-log {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-top: 1rem;
+        }
+        .court {
+            width: 100%;
+            max-width: 500px;
+            height: 380px;
+            background: linear-gradient(#166534, #4ade80);
+            border: 6px solid #1e40af;
+            border-radius: 12px;
+            position: relative;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        .goal {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            width: 80px;
+            height: 140px;
+            border: 6px solid #1e3a8a;
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="nav">
+            <div class="logo">🥍 Ushot</div>
+            <div style="font-weight:500; color:#64748b;">Lacrosse Shot Tracker</div>
+        </div>
+    </header>
+
+    <div class="sidebar">
+        <ul class="nav-links">
+            <li><a href="#" onclick="showSection('dashboard')" class="active">🏠 Dashboard</a></li>
+            <li><a href="#" onclick="showSection('log')">📝 Log Session</a></li>
+            <li><a href="#" onclick="showSection('stats')">📊 Stats</a></li>
+            <li><a href="#" onclick="showSection('goals')">🎯 Goals</a></li>
+            <li><a href="#" onclick="showSection('heatmap')">🔥 Heatmap</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <!-- Dashboard -->
+        <div id="dashboard" class="section active">
+            <h1 style="font-size:2.8rem; margin-bottom:1rem;">Welcome back, Shooter</h1>
+            <div class="card">
+                <h2>Season Overview</h2>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1.5rem; margin-top:1.5rem;">
+                    <div><strong id="total-shots">0</strong><br>Total Shots</div>
+                    <div><strong id="avg-accuracy">0%</strong><br>Accuracy</div>
+                    <div><strong id="current-streak">0</strong><br>Day Streak</div>
+                    <div><strong id="this-week">0</strong><br>Shots This Week</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Session -->
+        <div id="log" class="section">
+            <div class="card">
+                <h2>Log Lacrosse Session</h2>
+                <button id="startBtn" class="btn btn-primary" onclick="startSession()">Start New Session</button>
+                <button id="endBtn" class="btn" style="display:none; background:#ef4444; color:white;" onclick="endSession()">End Session</button>
+
+                <div id="session-log" class="shot-log" style="display:none;">
+                    <h3>Log Individual Shot</h3>
+                    <div class="form-grid">
+                        <div>
+                            <label>Shot Type</label>
+                            <select id="shotType">
+                                <option value="Wrist">Wrist Shot</option>
+                                <option value="Overhand">Overhand</option>
+                                <option value="Sidearm">Sidearm</option>
+                                <option value="Bounce">Bounce Shot</option>
+                                <option value="Quick">Quick Stick</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Hand</label>
+                            <select id="hand">
+                                <option value="Strong">Strong Hand</option>
+                                <option value="Weak">Weak Hand</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Result</label>
+                            <select id="made">
+                                <option value="true">✅ Made</option>
+                                <option value="false">❌ Miss</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:1rem;" onclick="logShot()">Log Shot</button>
+                    <p id="shots-this-session" style="margin-top:1rem; font-weight:600;">Shots this session: 0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="stats" class="section">
+            <div class="card">
+                <h2>Season Stats</h2>
+                <canvas id="typeChart" height="120"></canvas>
+            </div>
+        </div>
+
+        <!-- Goals -->
+        <div id="goals" class="section">
+            <div class="card">
+                <h2>Season Goals</h2>
+                <ul style="margin-top:1rem; line-height:2.2;">
+                    <li>500 shots this month — <strong>Progress: 340/500</strong></li>
+                    <li>150 weak hand shots</li>
+                    <li>7-day streak 🔥</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div id="heatmap" class="section">
+            <div class="card">
+                <h2>Shooting Heatmap</h2>
+                <div class="court" id="lacrosseCourt">
+                    <div class="goal"></div>
+                </div>
+                <p style="text-align:center; color:#64748b;">Click on the field to record shot locations (demo)</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessions = JSON.parse(localStorage.getItem('usHotLacrosse')) || [];
+        let currentSession = null;
+        let chartInstance = null;
+
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+            
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+            if (section === 'dashboard') document.querySelector('.nav-links a').classList.add('active');
+        }
+
+        function startSession() {
+            currentSession = {
+                id: Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                shots: []
+            };
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('endBtn').style.display = 'inline-block';
+            document.getElementById('session-log').style.display = 'block';
+            updateSessionCount();
+        }
+
+        function endSession() {
+            if (currentSession && currentSession.shots.length > 0) {
+                sessions.unshift(currentSession);
+                localStorage.setItem('usHotLacrosse', JSON.stringify(sessions));
+            }
+            currentSession = null;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('endBtn').style.display = 'none';
+            document.getElementById('session-log').style.display = 'none';
+            refreshAll();
+        }
+
+        function logShot() {
+            if (!currentSession) return;
+            const shot = {
+                type: document.getElementById('shotType').value,
+                hand: document.getElementById('hand').value,
+                made: document.getElementById('made').value === 'true'
+            };
+            currentSession.shots.push(shot);
+            updateSessionCount();
+        }
+
+        function updateSessionCount() {
+            if (currentSession) {
+                document.getElementById('shots-this-session').textContent = 
+                    `Shots this session: ${currentSession.shots.length}`;
+            }
+        }
+
+        function refreshAll() {
+            // Total shots
+            let total = sessions.reduce((sum, s) => sum + s.shots.length, 0);
+            document.getElementById('total-shots').textContent = total;
+
+            // Simple accuracy
+            let made = 0;
+            sessions.forEach(s => {
+                s.shots.forEach(shot => { if (shot.made) made++; });
+            });
+            const accuracy = total > 0 ? Math.round((made / total) * 100) : 0;
+            document.getElementById('avg-accuracy').textContent = accuracy + '%';
+
+            // Render type chart
+            renderTypeChart();
+        }
+
+        function renderTypeChart() {
+            const ctx = document.getElementById('typeChart');
+            if (chartInstance) chartInstance.destroy();
+
+            const typeCount = {};
+            sessions.forEach(s => {
+                s.shots.forEach(shot => {
+                    typeCount[shot.type] = (typeCount[shot.type] || 0) + 1;
+                });
+            });
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeCount),
+                    datasets: [{
+                        data: Object.values(typeCount),
+                        backgroundColor: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // Initialize
+        window.onload = () => {
+            refreshAll();
+            showSection('dashboard');
+            
+            // Demo court click
+            document.getElementById('lacrosseCourt').addEventListener('click', (e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(0);
+                const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(0);
+                alert(`Shot location recorded: ${x}% across, ${y}% down the field 🥍`);
+            });
+        };
+    </script>
+</body>
+</html>
